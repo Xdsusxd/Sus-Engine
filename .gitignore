@@ -1,0 +1,44 @@
+# ── Build ──────────────────────────────────────────────────────
+build/
+out/
+cmake-build-*/
+*.vcxproj*
+*.sln
+CMakeCache.txt
+CMakeFiles/
+
+# ── IDE ────────────────────────────────────────────────────────
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.sdf
+*.opensdf
+
+# ── Compiled ───────────────────────────────────────────────────
+*.obj
+*.o
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# ── SPIR-V compiled shaders ───────────────────────────────────
+*.spv
+
+# ── Logs ───────────────────────────────────────────────────────
+*.log
+
+# ── OS junk ────────────────────────────────────────────────────
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ── Progress tracking (personal) ──────────────────────────────
+PROGRESS.md
+
+# ── Third party (fetched by CMake) ─────────────────────────────
+third_party/
