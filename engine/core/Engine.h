@@ -5,6 +5,13 @@
 #include "core/Time.h"
 #include "renderer/VulkanContext.h"
 #include "renderer/Swapchain.h"
+#include "renderer/Renderer.h"
+#include "renderer/Pipeline.h"
+#include "renderer/GridPipeline.h"
+#include "renderer/Camera.h"
+#include "renderer/Mesh.h"
+#include "renderer/Texture.h"
+#include "scene/Scene.h"
 
 namespace Engine {
 
@@ -25,6 +32,9 @@ public:
     Time&          GetTime()          { return m_Time; }
     VulkanContext& GetVulkanContext() { return m_VulkanCtx; }
     Swapchain&     GetSwapchain()     { return m_Swapchain; }
+    Renderer&      GetRenderer()      { return m_Renderer; }
+    Camera&        GetCamera()        { return m_Camera; }
+    Scene&         GetScene()         { return m_Scene; }
 
 private:
     Window        m_Window;
@@ -32,6 +42,14 @@ private:
     Time          m_Time;
     VulkanContext m_VulkanCtx;
     Swapchain     m_Swapchain;
+    Renderer      m_Renderer;
+    Pipeline      m_Pipeline;
+    GridPipeline  m_GridPipeline;
+    Camera        m_Camera;
+    Scene         m_Scene;
+    Mesh          m_CubeMesh;
+    Mesh          m_PyramidMesh;
+    Texture       m_WhiteTexture;
     bool          m_Running = false;
 };
 
