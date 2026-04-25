@@ -62,6 +62,7 @@ target_link_libraries(FYEngineLib PUBLIC
     glfw
     glm::glm
     Vulkan::Vulkan
+    GPUOpen::VulkanMemoryAllocator
 )
 
 # MSVC specific flags
