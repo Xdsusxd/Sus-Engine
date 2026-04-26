@@ -63,6 +63,8 @@ bool EngineApp::Init(const EngineConfig& config) {
     float aspect = static_cast<float>(m_Swapchain.GetExtent().width) /
                    static_cast<float>(m_Swapchain.GetExtent().height);
     m_Camera.Init(60.0f, aspect, 0.01f, 1000.0f);
+    m_Camera.SetMode(CameraMode::ThirdPerson);
+    m_Camera.SetDistance(8.0f);
 
     // ── Assets ────────────────────────────────────────────────
     m_CubeMesh = Mesh::CreateCube(
@@ -76,10 +78,10 @@ bool EngineApp::Init(const EngineConfig& config) {
     m_WhiteTexture.CreateSolidColor(m_VulkanCtx, m_Renderer, 255, 255, 255);
 
     // ── Scene Setup ───────────────────────────────────────────
-    auto& centralCube = m_Scene.AddObject("CentralCube");
+    auto& centralCube = m_Scene.AddObject("Player");
     centralCube.mesh = &m_CubeMesh;
     centralCube.transform.position = {0.0f, 0.5f, 0.0f};
-    centralCube.autoRotate = {25.0f, 45.0f, 0.0f};
+    // Remove auto-rotate since we will control it
 
     auto& pyramid = m_Scene.AddObject("Pyramid");
     pyramid.mesh = &m_PyramidMesh;
@@ -137,6 +139,45 @@ void EngineApp::Run() {
             float newAspect = static_cast<float>(m_Swapchain.GetExtent().width) /
                               static_cast<float>(m_Swapchain.GetExtent().height);
             m_Camera.SetAspect(newAspect);
+        }
+
+        // ── Player Movement (WASD relative to Camera) ─────────
+        SceneObject* player = m_Scene.FindObject("Player");
+        if (player) {
+            float moveSpeed = 5.0f * dt;
+            if (m_Input.IsKeyDown(Key::LeftShift)) moveSpeed *= 2.0f;
+
+            // Get camera forward and right vectors (ignoring Y for pure horizontal movement)
+            glm::vec3 camFwd = m_Camera.GetTarget() - m_Camera.GetPosition();
+            camFwd.y = 0.0f;
+            if (glm::length(camFwd) > 0.001f) camFwd = glm::normalize(camFwd);
+            else camFwd = glm::vec3(0, 0, -1);
+
+            glm::vec3 camRight = glm::normalize(glm::cross(camFwd, glm::vec3(0, 1, 0)));
+
+            glm::vec3 moveDir(0.0f);
+            if (m_Input.IsKeyDown(Key::W)) moveDir += camFwd;
+            if (m_Input.IsKeyDown(Key::S)) moveDir -= camFwd;
+            if (m_Input.IsKeyDown(Key::A)) moveDir -= camRight;
+            if (m_Input.IsKeyDown(Key::D)) moveDir += camRight;
+
+            if (glm::length(moveDir) > 0.0f) {
+                moveDir = glm::normalize(moveDir);
+                player->transform.position += moveDir * moveSpeed;
+                
+                // Make player face movement direction
+                float targetYaw = glm::degrees(atan2f(-moveDir.z, moveDir.x)) + 90.0f;
+                // Simple lerp for smooth rotation
+                float currentYaw = player->transform.rotation.y;
+                // Handle wrap-around
+                float diff = targetYaw - currentYaw;
+                while (diff < -180.0f) diff += 360.0f;
+                while (diff > 180.0f) diff -= 360.0f;
+                player->transform.rotation.y += diff * 10.0f * dt;
+            }
+
+            // Update camera target to follow player
+            m_Camera.SetTarget(player->transform.position);
         }
 
         // ── Update scene & camera ─────────────────────────────
