@@ -12,6 +12,7 @@
 #include "renderer/Mesh.h"
 #include "renderer/Texture.h"
 #include "scene/Scene.h"
+#include "scene/CharacterController.h"
 
 namespace Engine {
 
@@ -47,6 +48,7 @@ private:
     GridPipeline  m_GridPipeline;
     Camera        m_Camera;
     Scene         m_Scene;
+    CharacterController m_PlayerController;
     Mesh          m_CubeMesh;
     Mesh          m_PyramidMesh;
     Texture       m_WhiteTexture;

@@ -1,2 +1,2 @@
 @echo off
-build\Release\FYEngine.exe %*
+.\build\Release\FYEngine.exe

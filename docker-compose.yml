@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  fyengine-builder:
+    build: .
+    container_name: fyengine-builder
+    volumes:
+      - .:/app
+    # El contenedor compilará el proyecto por defecto cuando se ejecute `docker compose up`
+    command: >
+      sh -c "cmake --preset linux-ninja-debug && cmake --build --preset linux-ninja-debug"

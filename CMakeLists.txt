@@ -47,6 +47,29 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(stb)
 
+# Jolt Physics
+set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+set(TARGET_HELLO_WORLD OFF CACHE BOOL "" FORCE)
+set(TARGET_PERFORMANCE_TEST OFF CACHE BOOL "" FORCE)
+set(TARGET_SAMPLES OFF CACHE BOOL "" FORCE)
+set(TARGET_VIEWER OFF CACHE BOOL "" FORCE)
+set(ENABLE_ALL_WARNINGS OFF CACHE BOOL "" FORCE)
+set(OVERRIDE_CXX_FLAGS OFF CACHE BOOL "" FORCE)
+set(INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "" FORCE)
+set(USE_STATIC_MSVC_RUNTIME_LIBRARY OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+    jolt
+    GIT_REPOSITORY https://github.com/jrouwe/JoltPhysics.git
+    GIT_TAG        v5.0.0
+    SOURCE_SUBDIR  Build
+)
+FetchContent_MakeAvailable(jolt)
+
+# Suppress C4865 warnings from Windows SDK headers that Jolt triggers
+if(MSVC)
+    target_compile_options(Jolt PRIVATE /wd4865)
+endif()
+
 # ── Engine library ─────────────────────────────────────────────
 file(GLOB_RECURSE ENGINE_SOURCES
     "engine/core/*.cpp"
@@ -72,6 +95,7 @@ target_link_libraries(FYEngineLib PUBLIC
     glm::glm
     Vulkan::Vulkan
     GPUOpen::VulkanMemoryAllocator
+    Jolt
 )
 
 # MSVC specific flags

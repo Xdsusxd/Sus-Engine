@@ -1,0 +1,54 @@
+{
+    "name": "FY-Engine Vulkan Environment",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "cmake.configureOnOpen": true,
+                "cmake.generator": "Ninja",
+                "editor.formatOnSave": true
+            },
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "vadimcn.vscode-lldb"
+            ]
+        }
+    },
+
+    "runArgs": [
+        // Permitir el acceso a la tarjeta de video del host (GPU)
+        "--gpus", "all",
+        // Red compartida para que funcione X11/Wayland de WSLg (en Windows) o Linux nativo
+        "--net", "host",
+        // Permitir la comunicación IPC y DRI (Direct Rendering Infrastructure)
+        "--ipc=host",
+        "--device", "/dev/dri"
+    ],
+
+    "containerEnv": {
+        // Enviar el display al host
+        "DISPLAY": "${localEnv:DISPLAY}",
+        "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+        "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
+        "PULSE_SERVER": "${localEnv:PULSE_SERVER}"
+    },
+
+    "mounts": [
+        // Compartir el socket de X11 y Wayland para la ventana del motor
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind,consistency=cached",
+        "source=${localEnv:XDG_RUNTIME_DIR},target=${localEnv:XDG_RUNTIME_DIR},type=bind,consistency=cached"
+    ],
+
+    "remoteUser": "dev"
+}

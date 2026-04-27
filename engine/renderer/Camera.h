@@ -29,6 +29,7 @@ public:
     // ── Third Person specific ─────────────────────────────────
     void SetMode(CameraMode mode) { m_Mode = mode; }
     void SetTarget(const glm::vec3& target) { m_Target = target; }
+    glm::vec3 GetTarget() const { return m_Target; }
     void SetDistance(float distance) { m_Distance = distance; }
 
     // ── Config ────────────────────────────────────────────────

@@ -37,6 +37,48 @@
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             }
+        },
+        {
+            "name": "linux-ninja-debug",
+            "displayName": "Linux Ninja Debug",
+            "description": "Ninja generator with Debug config for Linux",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_linux_debug",
+            "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "20",
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "linux-ninja-release",
+            "displayName": "Linux Ninja Release",
+            "description": "Ninja generator with Release config for Linux",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_linux_release",
+            "cacheVariables": {
+                "CMAKE_CXX_STANDARD": "20",
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "linux-ninja-debug",
+            "configurePreset": "linux-ninja-debug"
+        },
+        {
+            "name": "linux-ninja-release",
+            "configurePreset": "linux-ninja-release"
         }
     ]
 }

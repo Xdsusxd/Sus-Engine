@@ -1,6 +1,7 @@
 #include "core/Engine.h"
 #include "core/Logger.h"
 #include "renderer/ObjLoader.h"
+#include "physics/PhysicsSystem.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -59,6 +60,12 @@ bool EngineApp::Init(const EngineConfig& config) {
         return false;
     }
 
+    // ── Physics ───────────────────────────────────────────────
+    if (!PhysicsSystem::Get().Init()) {
+        LOG_FATAL("Engine", "Physics initialization failed!");
+        return false;
+    }
+
     // ── Camera ────────────────────────────────────────────────
     float aspect = static_cast<float>(m_Swapchain.GetExtent().width) /
                    static_cast<float>(m_Swapchain.GetExtent().height);
@@ -81,7 +88,6 @@ bool EngineApp::Init(const EngineConfig& config) {
     auto& centralCube = m_Scene.AddObject("Player");
     centralCube.mesh = &m_CubeMesh;
     centralCube.transform.position = {0.0f, 0.5f, 0.0f};
-    // Remove auto-rotate since we will control it
 
     auto& pyramid = m_Scene.AddObject("Pyramid");
     pyramid.mesh = &m_PyramidMesh;
@@ -101,6 +107,9 @@ bool EngineApp::Init(const EngineConfig& config) {
         obj.transform.rotation = {0.0f, 90.0f * i, 0.0f};
         obj.autoRotate = {0.0f, 22.5f, 0.0f};
     }
+
+    // Initialize controller AFTER all scene objects are added to avoid dangling pointers from std::vector reallocation
+    m_PlayerController.Init(m_Scene.FindObject("Player"), &m_Camera);
 
     m_Running = true;
     LOG_INFO("Engine", "All systems initialized successfully");
@@ -141,44 +150,11 @@ void EngineApp::Run() {
             m_Camera.SetAspect(newAspect);
         }
 
-        // ── Player Movement (WASD relative to Camera) ─────────
-        SceneObject* player = m_Scene.FindObject("Player");
-        if (player) {
-            float moveSpeed = 5.0f * dt;
-            if (m_Input.IsKeyDown(Key::LeftShift)) moveSpeed *= 2.0f;
+        // ── Player Movement ───────────────────────────────────
+        m_PlayerController.Update(m_Input, dt);
 
-            // Get camera forward and right vectors (ignoring Y for pure horizontal movement)
-            glm::vec3 camFwd = m_Camera.GetTarget() - m_Camera.GetPosition();
-            camFwd.y = 0.0f;
-            if (glm::length(camFwd) > 0.001f) camFwd = glm::normalize(camFwd);
-            else camFwd = glm::vec3(0, 0, -1);
-
-            glm::vec3 camRight = glm::normalize(glm::cross(camFwd, glm::vec3(0, 1, 0)));
-
-            glm::vec3 moveDir(0.0f);
-            if (m_Input.IsKeyDown(Key::W)) moveDir += camFwd;
-            if (m_Input.IsKeyDown(Key::S)) moveDir -= camFwd;
-            if (m_Input.IsKeyDown(Key::A)) moveDir -= camRight;
-            if (m_Input.IsKeyDown(Key::D)) moveDir += camRight;
-
-            if (glm::length(moveDir) > 0.0f) {
-                moveDir = glm::normalize(moveDir);
-                player->transform.position += moveDir * moveSpeed;
-                
-                // Make player face movement direction
-                float targetYaw = glm::degrees(atan2f(-moveDir.z, moveDir.x)) + 90.0f;
-                // Simple lerp for smooth rotation
-                float currentYaw = player->transform.rotation.y;
-                // Handle wrap-around
-                float diff = targetYaw - currentYaw;
-                while (diff < -180.0f) diff += 360.0f;
-                while (diff > 180.0f) diff -= 360.0f;
-                player->transform.rotation.y += diff * 10.0f * dt;
-            }
-
-            // Update camera target to follow player
-            m_Camera.SetTarget(player->transform.position);
-        }
+        // ── Physics ───────────────────────────────────────────
+        PhysicsSystem::Get().Update(dt);
 
         // ── Update scene & camera ─────────────────────────────
         m_Camera.Update(m_Input, dt);
@@ -216,6 +192,9 @@ void EngineApp::Shutdown() {
     m_PyramidMesh.Destroy();
     m_GridPipeline.Shutdown(m_VulkanCtx.GetDevice());
     m_Pipeline.Shutdown(m_VulkanCtx.GetDevice());
+    
+    PhysicsSystem::Get().Shutdown();
+
     m_Renderer.Shutdown(m_VulkanCtx.GetDevice());
     m_Swapchain.Shutdown(m_VulkanCtx.GetDevice());
     m_VulkanCtx.Shutdown();
