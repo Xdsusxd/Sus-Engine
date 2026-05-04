@@ -19,11 +19,11 @@ public:
     void Update(float dt);
     void Render(VkCommandBuffer cmd, const Pipeline& pipeline, const glm::mat4& viewProj);
 
-    std::vector<SceneObject>& GetObjects() { return m_Objects; }
+    std::vector<std::unique_ptr<SceneObject>>& GetObjects() { return m_Objects; }
     size_t ObjectCount() const { return m_Objects.size(); }
 
 private:
-    std::vector<SceneObject> m_Objects;
+    std::vector<std::unique_ptr<SceneObject>> m_Objects;
 };
 
 } // namespace Engine

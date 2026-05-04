@@ -39,6 +39,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vma)
 
+# miniaudio (header-only audio library)
+FetchContent_Declare(
+    miniaudio
+    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+    GIT_TAG        0.11.21
+)
+FetchContent_MakeAvailable(miniaudio)
+
 # stb (header-only image loading)
 FetchContent_Declare(
     stb
@@ -46,6 +54,14 @@ FetchContent_Declare(
     GIT_TAG        master
 )
 FetchContent_MakeAvailable(stb)
+
+# ImGui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        docking
+)
+FetchContent_MakeAvailable(imgui)
 
 # Jolt Physics
 set(TARGET_UNIT_TESTS OFF CACHE BOOL "" FORCE)
@@ -83,11 +99,21 @@ file(GLOB_RECURSE ENGINE_SOURCES
     "engine/tools/*.cpp"
 )
 
-add_library(FYEngineLib STATIC ${ENGINE_SOURCES})
+# ImGui Sources
+file(GLOB IMGUI_SOURCES
+    "${imgui_SOURCE_DIR}/*.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp"
+    "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp"
+)
+
+add_library(FYEngineLib STATIC ${ENGINE_SOURCES} ${IMGUI_SOURCES})
 
 target_include_directories(FYEngineLib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/engine
     ${stb_SOURCE_DIR}
+    ${miniaudio_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}
+    ${imgui_SOURCE_DIR}/backends
 )
 
 target_link_libraries(FYEngineLib PUBLIC

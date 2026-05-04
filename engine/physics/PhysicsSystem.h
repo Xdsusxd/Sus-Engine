@@ -1,7 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <vulkan/vulkan.h>
+#include "physics/PhysicsBody.h"
 #include <memory>
 
 // Forward declarations to avoid including Jolt headers in Engine headers
@@ -23,6 +22,10 @@ public:
     bool Init();
     void Update(float dt);
     void Shutdown();
+
+    // Body management
+    PhysicsBodyID CreateBody(const PhysicsBodyDesc& desc);
+    void          RemoveBody(const PhysicsBodyID& id);
 
     JPH::PhysicsSystem* GetJoltSystem() const { return m_PhysicsSystem.get(); }
 

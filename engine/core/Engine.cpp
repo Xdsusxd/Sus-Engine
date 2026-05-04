@@ -2,6 +2,13 @@
 #include "core/Logger.h"
 #include "renderer/ObjLoader.h"
 #include "physics/PhysicsSystem.h"
+#include "audio/AudioSystem.h"
+#include "ui/UISystem.h"
+#include <imgui.h>
+#include "scene/CharacterController.h"
+#include "scene/ProximityTriggerComponent.h"
+#include "ai/EnemyAIComponent.h"
+#include "animation/Skeleton.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -60,11 +67,30 @@ bool EngineApp::Init(const EngineConfig& config) {
         return false;
     }
 
+    // ── UI ────────────────────────────────────────────────────
+    if (!UISystem::Get().Init(m_VulkanCtx, m_Swapchain, m_Window.GetHandle())) {
+        LOG_FATAL("Engine", "UI initialization failed!");
+        return false;
+    }
+
     // ── Physics ───────────────────────────────────────────────
     if (!PhysicsSystem::Get().Init()) {
         LOG_FATAL("Engine", "Physics initialization failed!");
         return false;
     }
+
+    if (!AudioSystem::Get().Init()) {
+        LOG_FATAL("Engine", "Audio initialization failed!");
+        return false;
+    }
+
+    // Create a static floor (large flat box at y = 0)
+    PhysicsBodyDesc floorDesc;
+    floorDesc.type       = PhysicsBodyType::Static;
+    floorDesc.position   = {0.0f, -0.5f, 0.0f};  // Top surface at y = 0
+    floorDesc.halfExtent = {50.0f, 0.5f, 50.0f};  // 100x1x100 slab
+    floorDesc.friction   = 0.8f;
+    PhysicsSystem::Get().CreateBody(floorDesc);
 
     // ── Camera ────────────────────────────────────────────────
     float aspect = static_cast<float>(m_Swapchain.GetExtent().width) /
@@ -94,6 +120,10 @@ bool EngineApp::Init(const EngineConfig& config) {
     pyramid.transform.position = {0.0f, 2.0f, 0.0f};
     pyramid.transform.scale = {0.5f, 0.5f, 0.5f};
     pyramid.autoRotate = {0.0f, -90.0f, 0.0f};
+    
+    // Add trigger after adding player
+    // wait, we need player to be added first, which it is.
+    pyramid.AddComponent<ProximityTriggerComponent>(m_Scene.FindObject("Player"), 3.0f, "Welcome to the Pyramid Zone!");
 
     for (int i = 0; i < 4; i++) {
         float angle = glm::radians(90.0f * static_cast<float>(i));
@@ -108,8 +138,55 @@ bool EngineApp::Init(const EngineConfig& config) {
         obj.autoRotate = {0.0f, 22.5f, 0.0f};
     }
 
-    // Initialize controller AFTER all scene objects are added to avoid dangling pointers from std::vector reallocation
-    m_PlayerController.Init(m_Scene.FindObject("Player"), &m_Camera);
+    // ── Animated Stick Figure (5 bones) ───────────────────────
+    // Bone 0: Pelvis (root)      — at (5, 1.0, 0)
+    // Bone 1: Left Leg  (child)  — offset (0, -0.5, 0)
+    // Bone 2: Right Leg (child)  — offset (0, -0.5, 0)
+    // Bone 3: Left Arm  (child)  — offset (-0.6, 0.3, 0)
+    // Bone 4: Right Arm (child)  — offset (0.6, 0.3, 0)
+    m_PlayerSkeleton.AddBone("Pelvis", BONE_NO_PARENT,
+        glm::translate(glm::mat4(1.0f), {5.0f, 1.0f, 0.0f}));
+    m_PlayerSkeleton.AddBone("LeftLeg", 0,
+        glm::translate(glm::mat4(1.0f), {-0.2f, -0.5f, 0.0f}));
+    m_PlayerSkeleton.AddBone("RightLeg", 0,
+        glm::translate(glm::mat4(1.0f), {0.2f, -0.5f, 0.0f}));
+    m_PlayerSkeleton.AddBone("LeftArm", 0,
+        glm::translate(glm::mat4(1.0f), {-0.6f, 0.3f, 0.0f}));
+    m_PlayerSkeleton.AddBone("RightArm", 0,
+        glm::translate(glm::mat4(1.0f), {0.6f, 0.3f, 0.0f}));
+
+    // Create visual cubes for each bone
+    const char* boneNames[] = {"BonePelvis", "BoneLeftLeg", "BoneRightLeg", "BoneLeftArm", "BoneRightArm"};
+    const glm::vec3 boneSizes[] = {
+        {0.4f, 0.3f, 0.25f},  // pelvis
+        {0.15f, 0.4f, 0.15f}, // left leg
+        {0.15f, 0.4f, 0.15f}, // right leg
+        {0.12f, 0.35f, 0.12f},// left arm
+        {0.12f, 0.35f, 0.12f} // right arm
+    };
+    for (int i = 0; i < 5; ++i) {
+        auto& bone = m_Scene.AddObject(boneNames[i]);
+        bone.mesh = &m_CubeMesh;
+        bone.transform.scale = boneSizes[i];
+    }
+
+    // Initialize animator
+    m_PlayerAnimator.Init(&m_PlayerSkeleton);
+    m_PlayerAnimator.AddClip(AnimationClip::CreateIdleBob(0.08f, 1.5f));
+    m_PlayerAnimator.AddClip(AnimationClip::CreateWalkCycle());
+    m_PlayerAnimator.Play("IdleBob");
+
+    // Initialize controller AFTER all scene objects are added
+    if (auto* playerObj = m_Scene.FindObject("Player")) {
+        playerObj->AddComponent<CharacterController>(&m_Camera, &m_Input);
+        
+        // Add an Enemy
+        auto& enemy = m_Scene.AddObject("Enemy");
+        enemy.mesh = &m_CubeMesh;
+        enemy.transform.position = {5.0f, 0.5f, -5.0f};
+        enemy.transform.scale = {0.8f, 1.2f, 0.8f};
+        enemy.AddComponent<EnemyAIComponent>(playerObj);
+    }
 
     m_Running = true;
     LOG_INFO("Engine", "All systems initialized successfully");
@@ -125,6 +202,8 @@ void EngineApp::Run() {
         m_Window.PollEvents();
 
         float dt = m_Time.DeltaTime();
+
+        UISystem::Get().BeginFrame();
 
         // ── Check for ESC to close ────────────────────────────
         if (m_Input.IsKeyPressed(Key::Escape)) {
@@ -150,15 +229,54 @@ void EngineApp::Run() {
             m_Camera.SetAspect(newAspect);
         }
 
-        // ── Player Movement ───────────────────────────────────
-        m_PlayerController.Update(m_Input, dt);
-
         // ── Physics ───────────────────────────────────────────
         PhysicsSystem::Get().Update(dt);
+
+        // ── Animation ─────────────────────────────────────────
+        bool isMoving = m_Input.IsKeyDown(Key::W) || m_Input.IsKeyDown(Key::S) || 
+                        m_Input.IsKeyDown(Key::A) || m_Input.IsKeyDown(Key::D);
+        static bool wasMoving = false;
+        if (isMoving && !wasMoving) {
+            m_PlayerAnimator.Play("WalkCycle", 0.2f);
+            wasMoving = true;
+        } else if (!isMoving && wasMoving) {
+            m_PlayerAnimator.Play("IdleBob", 0.2f);
+            wasMoving = false;
+        }
+
+        m_PlayerAnimator.Update(dt);
+
+        // Sync visual bones to animated skeleton
+        const char* boneNames[] = {"BonePelvis", "BoneLeftLeg", "BoneRightLeg", "BoneLeftArm", "BoneRightArm"};
+        auto& worldMats = m_PlayerAnimator.GetWorldMatrices();
+        auto* playerObj = m_Scene.FindObject("Player");
+        if (playerObj) {
+            glm::mat4 playerMat = playerObj->transform.GetMatrix();
+            // Offset the stick figure so it's not exactly inside the player cube, but floating above/beside
+            playerMat = glm::translate(playerMat, glm::vec3(0.0f, 1.5f, 0.0f)); 
+
+            for (int i = 0; i < 5; ++i) {
+                auto* boneObj = m_Scene.FindObject(boneNames[i]);
+                if (boneObj) {
+                    glm::mat4 finalMat = playerMat * worldMats[i];
+                    // Extract position
+                    boneObj->transform.position = glm::vec3(finalMat[3]);
+                    // Very crude rotation extraction for visual purposes
+                    boneObj->transform.rotation.y = playerObj->transform.rotation.y;
+                }
+            }
+        }
 
         // ── Update scene & camera ─────────────────────────────
         m_Camera.Update(m_Input, dt);
         m_Scene.Update(dt);
+
+        // ── Audio ─────────────────────────────────────────────
+        glm::vec3 camPos = m_Camera.GetPosition();
+        glm::vec3 camFwd = glm::normalize(m_Camera.GetTarget() - camPos);
+        glm::vec3 camUp  = glm::vec3(0, 1, 0); // Simplified UP vector
+        AudioSystem::Get().SetListenerPosition(camPos, camFwd, camUp);
+        AudioSystem::Get().Update();
 
         // ── Render frame ──────────────────────────────────────
         if (m_Renderer.BeginFrame(m_VulkanCtx, m_Swapchain, m_Window.GetHandle())) {
@@ -171,6 +289,17 @@ void EngineApp::Run() {
             // ── 2. Draw scene objects ─────────────────────────
             m_Pipeline.Bind(cmd);
             m_Scene.Render(cmd, m_Pipeline, viewProj);
+
+            // ── 3. Draw UI ────────────────────────────────────
+            ImGui::Begin("Engine Metrics");
+            ImGui::Text("FPS: %.1f", m_Time.FPS());
+            ImGui::Text("Delta Time: %.3f ms", dt * 1000.0f);
+            
+            auto camPos = m_Camera.GetPosition();
+            ImGui::Text("Camera Pos: (%.1f, %.1f, %.1f)", camPos.x, camPos.y, camPos.z);
+            ImGui::End();
+
+            UISystem::Get().EndFrame(cmd);
 
             m_Renderer.EndFrame(m_VulkanCtx, m_Swapchain, m_Window.GetHandle());
         }
@@ -194,6 +323,8 @@ void EngineApp::Shutdown() {
     m_Pipeline.Shutdown(m_VulkanCtx.GetDevice());
     
     PhysicsSystem::Get().Shutdown();
+    AudioSystem::Get().Shutdown();
+    UISystem::Get().Shutdown(m_VulkanCtx.GetDevice());
 
     m_Renderer.Shutdown(m_VulkanCtx.GetDevice());
     m_Swapchain.Shutdown(m_VulkanCtx.GetDevice());
