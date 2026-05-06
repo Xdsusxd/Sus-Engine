@@ -20,6 +20,12 @@ void Buffer::Create(VmaAllocator allocator, VkDeviceSize size, BufferUsage usage
             allocInfo.usage  = VMA_MEMORY_USAGE_AUTO;
             allocInfo.flags  = VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT;
             break;
+        case BufferUsage::DynamicVertex:
+            bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+            allocInfo.usage  = VMA_MEMORY_USAGE_AUTO;
+            allocInfo.flags  = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                               VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            break;
         case BufferUsage::Index:
             bufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
             allocInfo.usage  = VMA_MEMORY_USAGE_AUTO;

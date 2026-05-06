@@ -66,6 +66,12 @@ bool EngineApp::Init(const EngineConfig& config) {
         LOG_FATAL("Engine", "Grid pipeline initialization failed!");
         return false;
     }
+    if (!m_ParticlePipeline.Init(m_VulkanCtx, m_Swapchain.GetRenderPass())) {
+        LOG_FATAL("Engine", "Particle pipeline initialization failed!");
+        return false;
+    }
+
+    ParticleSystem::Get().Init(m_Renderer.GetAllocator());
 
     // ── UI ────────────────────────────────────────────────────
     if (!UISystem::Get().Init(m_VulkanCtx, m_Swapchain, m_Window.GetHandle())) {
@@ -231,6 +237,7 @@ void EngineApp::Run() {
 
         // ── Physics ───────────────────────────────────────────
         PhysicsSystem::Get().Update(dt);
+        ParticleSystem::Get().Update(dt);
 
         // ── Animation ─────────────────────────────────────────
         bool isMoving = m_Input.IsKeyDown(Key::W) || m_Input.IsKeyDown(Key::S) || 
@@ -290,12 +297,19 @@ void EngineApp::Run() {
             m_Pipeline.Bind(cmd);
             m_Scene.Render(cmd, m_Pipeline, viewProj);
 
-            // ── 3. Draw UI ────────────────────────────────────
+            // ── 3. Draw Particles ─────────────────────────────
+            ParticlePushConstants pc{};
+            pc.viewProj = viewProj;
+            auto viewMat = m_Camera.GetViewMatrix();
+            pc.cameraRight = glm::vec3(viewMat[0][0], viewMat[1][0], viewMat[2][0]);
+            pc.cameraUp    = glm::vec3(viewMat[0][1], viewMat[1][1], viewMat[2][1]);
+            ParticleSystem::Get().Render(cmd, m_ParticlePipeline, pc);
+
+            // ── 4. Draw UI ────────────────────────────────────
             ImGui::Begin("Engine Metrics");
             ImGui::Text("FPS: %.1f", m_Time.FPS());
             ImGui::Text("Delta Time: %.3f ms", dt * 1000.0f);
             
-            auto camPos = m_Camera.GetPosition();
             ImGui::Text("Camera Pos: (%.1f, %.1f, %.1f)", camPos.x, camPos.y, camPos.z);
             ImGui::End();
 
@@ -320,8 +334,10 @@ void EngineApp::Shutdown() {
     m_CubeMesh.Destroy();
     m_PyramidMesh.Destroy();
     m_GridPipeline.Shutdown(m_VulkanCtx.GetDevice());
+    m_ParticlePipeline.Shutdown(m_VulkanCtx.GetDevice());
     m_Pipeline.Shutdown(m_VulkanCtx.GetDevice());
     
+    ParticleSystem::Get().Shutdown();
     PhysicsSystem::Get().Shutdown();
     AudioSystem::Get().Shutdown();
     UISystem::Get().Shutdown(m_VulkanCtx.GetDevice());

@@ -1,6 +1,7 @@
 #include "ai/EnemyAIComponent.h"
 #include "physics/PhysicsSystem.h"
 #include "audio/AudioSystem.h"
+#include "scene/ParticleSystem.h"
 #include "core/Logger.h"
 #include <glm/gtc/random.hpp>
 #include <cmath>
@@ -100,6 +101,23 @@ void EnemyAIComponent::UpdateAttack(float dt) {
     if (m_StateTimer <= 0.0f) {
         LOG_INFO("EnemyAI", "{} attacks {}!", m_Owner->name, m_Target->name);
         AudioSystem::Get().PlaySound3D("assets/audio/attack.wav", m_Owner->transform.position);
+        
+        // Emit blood/impact particles
+        ParticleProps props;
+        props.position = m_Owner->transform.position + glm::vec3(0, 0.5f, 0); // emit from middle of enemy
+        props.velocity = glm::vec3(0.0f, 2.0f, 0.0f);
+        props.velocityVariation = glm::vec3(3.0f, 3.0f, 3.0f);
+        props.colorBegin = glm::vec4(1.0f, 0.1f, 0.1f, 1.0f); // Red
+        props.colorEnd = glm::vec4(0.5f, 0.0f, 0.0f, 0.0f);
+        props.sizeBegin = 0.3f;
+        props.sizeEnd = 0.05f;
+        props.sizeVariation = 0.1f;
+        props.lifeTime = 0.5f;
+        
+        for (int i = 0; i < 30; i++) {
+            ParticleSystem::Get().Emit(props);
+        }
+
         m_StateTimer = 1.5f; // attack cooldown
     }
 }

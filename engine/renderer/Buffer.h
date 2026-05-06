@@ -9,6 +9,7 @@ namespace Engine {
 
 enum class BufferUsage {
     Vertex,
+    DynamicVertex,
     Index,
     Uniform,
     Staging

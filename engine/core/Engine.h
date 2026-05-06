@@ -8,6 +8,8 @@
 #include "renderer/Renderer.h"
 #include "renderer/Pipeline.h"
 #include "renderer/GridPipeline.h"
+#include "renderer/ParticlePipeline.h"
+#include "scene/ParticleSystem.h"
 #include "renderer/Camera.h"
 #include "renderer/Mesh.h"
 #include "renderer/Texture.h"
@@ -15,6 +17,7 @@
 #include "scene/CharacterController.h"
 #include "animation/Skeleton.h"
 #include "animation/Animator.h"
+#include "editor/Editor.h"
 
 namespace Engine {
 
@@ -48,6 +51,7 @@ private:
     Renderer      m_Renderer;
     Pipeline      m_Pipeline;
     GridPipeline  m_GridPipeline;
+    ParticlePipeline m_ParticlePipeline;
     Camera        m_Camera;
     Scene         m_Scene;
     Mesh          m_CubeMesh;
